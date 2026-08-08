@@ -1,74 +1,72 @@
-<div dir="rtl">
+# خُطاي — Khutai 🪷
 
-# خُطاي 🪷
+**An Arabic daily planner for macOS.** You add your tasks and their deadlines; it breaks each goal into concrete steps and spreads them across the days *before* the deadline — so nothing piles up on delivery day.
 
-**مخطِّط يومي عربي لنظام macOS** — تضيف مهامك ومواعيدها النهائية، فيقسّمها إلى خطوات عملية ويوزّعها على الأيام السابقة للموعد حتى لا يتكدّس العمل في يوم التسليم.
+Planning runs through the **ChatGPT subscription already on your Mac**. No API key, no extra subscription, no account to create.
 
-يعمل التخطيط عبر **اشتراك ChatGPT الموجود على جهازك** — لا يحتاج مفتاح API ولا اشتراكًا إضافيًا.
-
----
-
-## ما الذي يميّزه
-
-**تخطيط يفكّك الأهداف.** تكتب «تسليم مشروع التخرج» وموعده، فيحوّله إلى خطوات محددة موزّعة على الأيام، ويقدّر مدة كل خطوة بالدقائق.
-
-**يحترم طاقتك.** لا يتجاوز خمس ساعات عمل فعلية في اليوم لمهام الدوام، ويوزّع الزائد على الأيام السابقة للموعد.
-
-**قسمان منفصلان.** «الدوام» و«خارج الدوام»، لأن اليوم ليس كتلة واحدة.
-
-**ودجت لسطح المكتب.** خطوات اليوم أمامك مع إمكانية التأشير عليها مباشرة دون فتح التطبيق.
-
-**تقويم شهري.** نقطة تحت كل يوم فيه خطة، وصفحة تجمع إنجازات الشهر.
-
-**سمتان للألوان.** «لوتس» و«نجوم» — زر التبديل في أعلى الواجهة.
-
-**عبارات تتجدد.** آية أو بيت شعر أو تذكير، يتغيّر كل ساعة.
-
-**يُنظّف نفسه.** المهمة المنجزة تبقى ظاهرة يومًا واحدًا ثم تُحذف تلقائيًا، مع بقاء سجلّها في إنجازات الشهر.
+> The app interface is entirely in Arabic (right-to-left). This README is in English so the code and setup are readable to everyone.
 
 ---
 
-## الخصوصية
+## Themes
 
-**التطبيق لا يتصل بالإنترنت.** لا يوجد في الكود أي استدعاء شبكة — لا `URLSession` ولا أي رابط. يمكنك التحقق بنفسك:
+Two color themes, switchable from the button at the top of the window. Your choice applies to the desktop widget too.
 
-</div>
+| Lotus 🪷 | Stars 🌟 |
+|:---:|:---:|
+| ![Lotus theme](docs/lotus.png) | ![Stars theme](docs/stars.png) |
+
+---
+
+## What it does
+
+**Breaks goals into steps.** Type "submit graduation project" with a deadline, and it becomes specific steps spread across days, each with an estimated duration in minutes.
+
+**Respects your capacity.** Never schedules more than five actual working hours per day for work tasks — the overflow moves to earlier days.
+
+**Two separate tracks.** "Work" and "Personal", because a day isn't one block.
+
+**Desktop widget.** Today's steps in front of you, tickable without opening the app.
+
+**Monthly calendar.** A dot under every day that has a plan, plus a page collecting the month's achievements.
+
+**Rotating reminders.** A verse, a line of poetry, or a thought — changes every hour.
+
+**Cleans up after itself.** A completed task stays visible for one day, then deletes automatically — while its record remains in the monthly achievements.
+
+---
+
+## Privacy
+
+**The app makes no network connections.** There is no networking code anywhere — no `URLSession`, no URLs, no web views. Verify it yourself:
 
 ```bash
 grep -rn "URLSession\|https://\|WKWebView" --include="*.swift" .
 ```
 
-<div dir="rtl">
+The AI runs by invoking the `codex` binary installed **locally** on your Mac, and that binary talks to *your* ChatGPT account. The app itself never touches a network.
 
-الذكاء الاصطناعي يعمل بتشغيل أداة `codex` المثبّتة **محليًا** على جهازك، وهي التي تتصل بحساب ChatGPT الخاص بك. التطبيق نفسه لا يرى شبكة ولا يرسل شيئًا لأي خادم.
-
-**بياناتك محلية بالكامل** في:
-
-</div>
+**All data stays local**, in:
 
 ```
 ~/Library/Application Support/KhutayPlanner/
 ```
 
-<div dir="rtl">
+No tracking, no analytics, no ads, no stored API keys.
 
-**لا تتبّع، لا تحليلات، لا إعلانات، ولا مفاتيح API مخزّنة.**
-
-وعند تشغيل المخطِّط، يُستدعى `codex` بوضع مقيّد: `--sandbox read-only` و`--ephemeral` وداخل مجلد مؤقت معزول يُحذف بعد الانتهاء. أي أن النموذج لا يستطيع الكتابة على ملفاتك.
+When planning runs, `codex` is invoked in a restricted mode — `--sandbox read-only`, `--ephemeral`, inside an isolated temporary directory that is deleted afterward. The model cannot write to your files.
 
 ---
 
-## المتطلبات
+## Requirements
 
 | | |
 |---|---|
-| **المعالج** | Apple Silicon (M1 أو أحدث) — أجهزة Intel غير مدعومة |
-| **النظام** | macOS 14.0 (Sonoma) أو أحدث |
-| **الذكاء الاصطناعي** | تطبيق [ChatGPT لنظام macOS](https://openai.com/chatgpt/download) مثبّت ومسجّل الدخول |
+| **Chip** | Apple Silicon (M1 or newer) — Intel Macs are not supported |
+| **OS** | macOS 14.0 (Sonoma) or later |
+| **AI** | [ChatGPT for macOS](https://openai.com/chatgpt/download) installed and signed in |
 
-بدلًا من تطبيق ChatGPT، يكفي وجود أداة `codex` في أحد هذه المسارات:
-
-</div>
+Instead of the ChatGPT app, a `codex` binary in any of these locations also works:
 
 ```
 /opt/homebrew/bin/codex
@@ -76,121 +74,106 @@ grep -rn "URLSession\|https://\|WKWebView" --include="*.swift" .
 /Applications/ChatGPT.app/Contents/Resources/codex
 ```
 
-<div dir="rtl">
-
-> **ملاحظة عن حدود الاستخدام:** Codex متاح في كل خطط ChatGPT بما فيها المجانية، لكن بحدود أقل. وكل إضافة أو تعديل لمهمة يشغّل عملية تخطيط كاملة — فإن كنت على الخطة المجانية قد تصل للحد بسرعة.
+> **On usage limits:** Codex is included in every ChatGPT plan, including the free one — but free plans have the lowest limits. Every task you add or edit triggers a full planning run, so a free plan may hit its limit quickly.
 
 ---
 
-## التثبيت
+## Install
 
-### الطريقة الأولى: النسخة الجاهزة
+### Option 1 — Prebuilt
 
-1. نزّل أحدث `Khutai.zip` من صفحة [Releases](../../releases)
-2. فُكّ الضغط، وانقل «خُطاي» إلى مجلد `Applications`
-3. **تحقّق من سلامة الملف** (اختياري لكن مستحسن):
-
-</div>
+1. Download the latest `Khutai.zip` from [Releases](../../releases)
+2. Unzip it and move **خُطاي** to your `Applications` folder
+3. Verify the download (optional but recommended):
 
 ```bash
 shasum -a 256 ~/Downloads/Khutai.zip
 ```
 
-<div dir="rtl">
+Compare the output to the checksum published on the release page. **If they differ, do not open it** — the file has been tampered with.
 
-قارن الناتج بالبصمة المنشورة في صفحة الإصدار. إن اختلفا، **لا تفتح الملف** — فقد جرى العبث به.
-
-4. اسمح للنظام بفتحه (خطوة لمرة واحدة، الشرح أدناه):
-
-</div>
+4. Allow macOS to open it (one time — see below):
 
 ```bash
 xattr -cr "/Applications/خُطاي.app"
 ```
 
-<div dir="rtl">
+5. Right-click the app → `Open` → `Open`
 
-5. كليك يمين على التطبيق ← `Open` ← `Open`
+### Option 2 — Build from source
 
-### الطريقة الثانية: البناء من المصدر
-
-تحتاج Xcode مثبّتًا.
-
-</div>
+Requires Xcode.
 
 ```bash
-git clone https://github.com/<اسم-حسابك>/Khutai.git
+git clone https://github.com/ISSQ1/Khutai.git
 cd Khutai
 ./build.sh
 ```
 
-<div dir="rtl">
+The script builds the app, signs it locally, and places it in `build/ReleaseBuild/Release/`.
 
-سيبني السكربت التطبيق ويوقّعه محليًا ويضعه في `build/ReleaseBuild/Release/`.
+Useful flags:
 
----
-
-## لماذا يقول macOS إن التطبيق «تالف»؟
-
-لأنه **غير موقّع بشهادة Apple Developer وغير موثّق (notarized)**.
-
-هذا لا يعني أن فيه خللًا أو خطرًا — يعني فقط أنني لم أدفع اشتراك برنامج مطوّري آبل السنوي. macOS يعرض هذا التحذير لكل تطبيق خارج المتجر لا يحمل شهادة، بصرف النظر عن محتواه.
-
-**ولأنني أدرك أن هذا يتطلب منك ثقة، فالكود مفتوح بالكامل هنا** — اقرأه، أو ابنه بنفسك من المصدر، أو تحقّق من بصمة الملف. هذا ما يمكنني تقديمه بدل الشهادة.
-
-> **نصيحة عامة:** لا تعتد على تنفيذ `xattr -cr` على أي ملف تنزّله من الإنترنت. هذه الخطوة تعطّل حماية حقيقية في نظامك. نفّذها فقط حين تعرف مصدر البرنامج وتثق به.
+```bash
+./build.sh --install   # build, then replace the copy in /Applications
+./build.sh --package   # build, then produce Khutai.zip with its SHA-256
+```
 
 ---
 
-## البنية
+## Why does macOS say the app is "damaged"?
 
-</div>
+Because it is **not signed with an Apple Developer certificate and not notarized**.
+
+That doesn't mean anything is wrong with it. It means I haven't paid Apple's annual developer program fee. macOS shows this warning for *every* unsigned app from outside the App Store, regardless of what's inside it.
+
+**Since that asks you to take my word for it, the source is fully open here** — read it, build it yourself, or verify the checksum. That's what I can offer in place of a certificate.
+
+> **General advice:** don't get in the habit of running `xattr -cr` on files you download. It disables a real protection. Do it only when you know and trust the source.
+
+---
+
+## Project layout
 
 ```
 LotusPlanner/
-    LotusPlannerApp.swift    نقطة الدخول
-    ContentView.swift        الواجهة الرئيسية
-    PlannerStore.swift       حالة التطبيق والمنطق
-    AIPlanner.swift          استدعاء Codex وتحليل الخطة
+    LotusPlannerApp.swift      entry point
+    ContentView.swift          main interface
+    PlannerStore.swift         app state and logic
+    AIPlanner.swift            Codex invocation and plan parsing
 LotusPlannerWidget/
-    LotusPlannerWidget.swift ودجت سطح المكتب
+    LotusPlannerWidget.swift   desktop widget
 Shared/
-    PlannerData.swift        النماذج والسمات والتخزين
+    PlannerData.swift          models, themes, storage
 ```
 
-<div dir="rtl">
-
-مكتوب بـ SwiftUI وWidgetKit، بدون أي اعتماديات خارجية.
+SwiftUI and WidgetKit. No external dependencies.
 
 ---
 
-## أسئلة متكررة
+## FAQ
 
-**هل يستهلك من اشتراكي؟**
-نعم، يستخدم حدود اشتراكك في ChatGPT. لا توجد أي تكلفة تذهب لي — لا أرى بياناتك ولا استخدامك.
+**Does it use up my ChatGPT quota?**
+Yes, it uses your plan's limits. Nothing is billed to me and I never see your data or usage.
 
-**هل يمكن استخدامه بدون ChatGPT؟**
-يفتح ويعمل كقائمة مهام عادية، لكن ميزة التخطيط الذكي لن تعمل.
+**Can I use it without ChatGPT?**
+It opens and works as a plain task list, but the AI planning won't run.
 
-**أين تُحفظ بياناتي؟ وكيف أحذفها؟**
-في `~/Library/Application Support/KhutayPlanner/`. احذف المجلد لتمسح كل شيء.
+**Where is my data stored, and how do I delete it?**
+`~/Library/Application Support/KhutayPlanner/`. Delete that folder to erase everything.
 
-**التطبيق بالعربية فقط؟**
-نعم، الواجهة عربية بالكامل بتخطيط من اليمين لليسار.
+**Is it Arabic only?**
+Yes — the interface is fully Arabic with right-to-left layout.
 
-**لماذا لا يعمل على جهازي Intel؟**
-النسخة الجاهزة مبنية لمعمارية arm64 فقط. يمكنك بناؤها من المصدر إن أردت تجربتها.
-
----
-
-## المساهمة
-
-الملاحظات والاقتراحات مرحّب بها عبر [Issues](../../issues).
+**Why won't it run on my Intel Mac?**
+The prebuilt binary is arm64-only. You can build from source if you want to try it.
 
 ---
 
-## الترخيص
+## Contributing
 
-[MIT](LICENSE) — استخدمه وعدّله وانشره بحرية، مع الإبقاء على إشعار الترخيص.
+Feedback and suggestions are welcome via [Issues](../../issues).
 
-</div>
+## License
+
+[MIT](LICENSE) — use, modify, and distribute freely, keeping the license notice.
