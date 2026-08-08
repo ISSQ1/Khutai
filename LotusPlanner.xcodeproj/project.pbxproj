@@ -1,0 +1,179 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* LotusPlannerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* LotusPlannerApp.swift */; };
+		A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ContentView.swift */; };
+		A10000000000000000000003 /* PlannerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* PlannerStore.swift */; };
+		A10000000000000000000004 /* PlannerData.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* PlannerData.swift */; };
+		A10000000000000000000005 /* LotusPlannerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* LotusPlannerWidget.swift */; };
+		A10000000000000000000006 /* PlannerData.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* PlannerData.swift */; };
+		A10000000000000000000007 /* LotusPlannerWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* LotusPlannerWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A10000000000000000000008 /* AIPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* AIPlanner.swift */; };
+		A10000000000000000000009 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* AppIcon.icns */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A30000000000000000000001 = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A90000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A70000000000000000000002;
+			remoteInfo = LotusPlannerWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A40000000000000000000001 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (A10000000000000000000007 /* LotusPlannerWidget.appex in Embed App Extensions */, );
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		A20000000000000000000001 /* LotusPlannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LotusPlannerApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A20000000000000000000003 /* PlannerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerStore.swift; sourceTree = "<group>"; };
+		A20000000000000000000004 /* PlannerData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerData.swift; sourceTree = "<group>"; };
+		A20000000000000000000005 /* LotusPlannerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LotusPlannerWidget.swift; sourceTree = "<group>"; };
+		A20000000000000000000006 /* LotusPlanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LotusPlanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000007 /* LotusPlannerWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LotusPlannerWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000008 /* App Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A20000000000000000000009 /* App Entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LotusPlanner.entitlements; sourceTree = "<group>"; };
+		A2000000000000000000000A /* Widget Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A2000000000000000000000B /* Widget Entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LotusPlannerWidget.entitlements; sourceTree = "<group>"; };
+		A2000000000000000000000C /* AIPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPlanner.swift; sourceTree = "<group>"; };
+		A2000000000000000000000D /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A50000000000000000000001 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A50000000000000000000002 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A60000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A60000000000000000000002 /* LotusPlanner */,
+				A60000000000000000000003 /* LotusPlannerWidget */,
+				A60000000000000000000004 /* Shared */,
+				A60000000000000000000005 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A60000000000000000000002 /* LotusPlanner */ = {
+			isa = PBXGroup;
+			children = (A20000000000000000000001, A20000000000000000000002, A20000000000000000000003, A2000000000000000000000C, A2000000000000000000000D, A20000000000000000000008, A20000000000000000000009, );
+			path = LotusPlanner;
+			sourceTree = "<group>";
+		};
+		A60000000000000000000003 /* LotusPlannerWidget */ = {
+			isa = PBXGroup;
+			children = (A20000000000000000000005, A2000000000000000000000A, A2000000000000000000000B, );
+			path = LotusPlannerWidget;
+			sourceTree = "<group>";
+		};
+		A60000000000000000000004 /* Shared */ = {
+			isa = PBXGroup;
+			children = (A20000000000000000000004, );
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		A60000000000000000000005 /* Products */ = {
+			isa = PBXGroup;
+			children = (A20000000000000000000006, A20000000000000000000007, );
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A70000000000000000000001 /* LotusPlanner */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB0000000000000000000001;
+			buildPhases = (A80000000000000000000001, A50000000000000000000001, A80000000000000000000003, A40000000000000000000001, );
+			buildRules = ();
+			dependencies = (A30000000000000000000002, );
+			name = LotusPlanner;
+			productName = LotusPlanner;
+			productReference = A20000000000000000000006;
+			productType = "com.apple.product-type.application";
+		};
+		A70000000000000000000002 /* LotusPlannerWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB0000000000000000000002;
+			buildPhases = (A80000000000000000000002, A50000000000000000000002, );
+			buildRules = ();
+			dependencies = ();
+			name = LotusPlannerWidget;
+			productName = LotusPlannerWidget;
+			productReference = A20000000000000000000007;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A90000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					A70000000000000000000001 = {CreatedOnToolsVersion = 26.6; };
+					A70000000000000000000002 = {CreatedOnToolsVersion = 26.6; };
+				};
+			};
+			buildConfigurationList = AB0000000000000000000003;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = ar;
+			hasScannedForEncodings = 0;
+			knownRegions = (ar, en, Base, );
+			mainGroup = A60000000000000000000001;
+			productRefGroup = A60000000000000000000005;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (A70000000000000000000001, A70000000000000000000002, );
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A80000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000009 /* AppIcon.icns in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A80000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000008, ); runOnlyForDeploymentPostprocessing = 0; };
+		A80000000000000000000002 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000005, A10000000000000000000006, ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A30000000000000000000002 = {isa = PBXTargetDependency; target = A70000000000000000000002; targetProxy = A30000000000000000000001; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		AC0000000000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_VERSION = 6.0; }; name = Debug; };
+		AC0000000000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_VERSION = 6.0; }; name = Release; };
+		AC0000000000000000000003 /* App Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = LotusPlanner/LotusPlanner.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; COMBINE_HIDPI_IMAGES = YES; ENABLE_HARDENED_RUNTIME = NO; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = LotusPlanner/Info.plist; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = com.shatha.lotusplanner; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_STRICT_CONCURRENCY = minimal; }; name = Debug; };
+		AC0000000000000000000004 /* App Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = LotusPlanner/LotusPlanner.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; COMBINE_HIDPI_IMAGES = YES; ENABLE_HARDENED_RUNTIME = NO; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = LotusPlanner/Info.plist; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = com.shatha.lotusplanner; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_STRICT_CONCURRENCY = minimal; }; name = Release; };
+		AC0000000000000000000005 /* Widget Debug */ = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = LotusPlannerWidget/LotusPlannerWidget.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = LotusPlannerWidget/Info.plist; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks", "@executable_path/../../../../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = com.shatha.lotusplanner.dreamwidget; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_STRICT_CONCURRENCY = minimal; }; name = Debug; };
+		AC0000000000000000000006 /* Widget Release */ = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = LotusPlannerWidget/LotusPlannerWidget.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = LotusPlannerWidget/Info.plist; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks", "@executable_path/../../../../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = com.shatha.lotusplanner.dreamwidget; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_STRICT_CONCURRENCY = minimal; }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AB0000000000000000000001 = {isa = XCConfigurationList; buildConfigurations = (AC0000000000000000000003, AC0000000000000000000004, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		AB0000000000000000000002 = {isa = XCConfigurationList; buildConfigurations = (AC0000000000000000000005, AC0000000000000000000006, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		AB0000000000000000000003 = {isa = XCConfigurationList; buildConfigurations = (AC0000000000000000000001, AC0000000000000000000002, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = A90000000000000000000001 /* Project object */;
+}
