@@ -19,9 +19,9 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.3</string>
+    <string>2.0</string>
     <key>CFBundleVersion</key>
-	<string>11</string>
+	<string>16</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
@@ -29,7 +29,7 @@
             <string>com.shatha.lotusplanner</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>lotusplanner</string>
+                <string>khutaiapp</string>
             </array>
         </dict>
     </array>
@@ -37,5 +37,15 @@
     <string>14.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSRequiresAquaSystemAppearance</key>
+    <true/>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>يعرض خُطاي مواعيدك في خطة اليوم والتقويم الشهري، ويحفظ المواعيد التي تضيفها في تقويم «خُطاي».</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>يعرض خُطاي مواعيدك في خطة اليوم والتقويم الشهري، ويحفظ المواعيد التي تضيفها في تقويم «خُطاي».</string>
+    <key>NSRemindersFullAccessUsageDescription</key>
+    <string>يزامن خُطاي مهامك الرئيسية مع قائمة «خُطاي» في التذكيرات، ويحدّث إنجازها في الاتجاهين.</string>
+    <key>NSRemindersUsageDescription</key>
+    <string>يزامن خُطاي مهامك الرئيسية مع قائمة «خُطاي» في التذكيرات، ويحدّث إنجازها في الاتجاهين.</string>
 </dict>
 </plist>

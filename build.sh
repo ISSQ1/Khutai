@@ -19,6 +19,8 @@ echo "── ١/٤ البناء ──"
 # يتطلب حساب Apple Developer مدفوعًا. نعطّل التوقيع أثناء البناء ثم نوقّع
 # محليًا في الخطوة التالية.
 #
+# ونبني نسخة شاملة (Apple Silicon وIntel) حتى تعمل على أي ماك بنظام macOS 14 أو أحدث.
+#
 # وتعطيل رموز التنقيح يمنع تضمين المسار المطلق لمجلد المطوّر داخل الملف
 # التنفيذي — وإلا انكشف اسم المستخدم على جهاز من يبني النسخة المنشورة.
 xcodebuild \
@@ -26,6 +28,8 @@ xcodebuild \
   -target LotusPlanner \
   -configuration Release \
   SYMROOT="$BUILD_DIR" \
+  ARCHS="arm64 x86_64" \
+  ONLY_ACTIVE_ARCH=NO \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY="" \
@@ -60,6 +64,7 @@ fi
 
 echo
 echo "✅ جاهز: $APP"
+echo "   المعماريات: $(lipo -archs "$APP/Contents/MacOS/LotusPlanner" 2>/dev/null || echo غير معروفة)"
 
 if [[ "${1:-}" == "--install" ]]; then
   echo

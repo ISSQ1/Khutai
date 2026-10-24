@@ -2,21 +2,21 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-struct TogglePlannedStepIntent: AppIntent {
-    static let title: LocalizedStringResource = "تحديث إنجاز المهمة"
+struct SetWidgetTaskPageIntent: AppIntent {
+    static let title: LocalizedStringResource = "تمرير المهام"
     static let openAppWhenRun = false
 
-    @Parameter(title: "معرّف الخطوة")
-    var stepID: String
+    @Parameter(title: "رقم الصفحة")
+    var page: Int
 
     init() {}
 
-    init(stepID: String) {
-        self.stepID = stepID
+    init(page: Int) {
+        self.page = page
     }
 
     func perform() async throws -> some IntentResult {
-        PlannerStorage.toggleCompletedStep(stepID)
+        PlannerStorage.saveWidgetTaskPage(page)
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
     }
@@ -25,10 +25,10 @@ struct TogglePlannedStepIntent: AppIntent {
 struct LotusEntry: TimelineEntry {
     let date: Date
     let tasks: [PlannerTask]
-    let plan: DailyPlan?
-    let completedSteps: [String: Date]
+    let widgetTaskPage: Int
     let wisdom: (text: String, source: String)
     let theme: PlannerTheme
+    var snapshot = WidgetSnapshot()
 }
 
 struct LotusProvider: TimelineProvider {
@@ -38,8 +38,7 @@ struct LotusProvider: TimelineProvider {
             tasks: [
                 PlannerTask(title: "مهمتك التالية", deadline: .now.addingTimeInterval(3_600), category: .work)
             ],
-            plan: nil,
-            completedSteps: [:],
+            widgetTaskPage: 0,
             wisdom: PlannerStorage.wisdom(for: .now),
             theme: PlannerStorage.loadTheme()
         )
@@ -72,10 +71,10 @@ struct LotusProvider: TimelineProvider {
         return LotusEntry(
             date: date,
             tasks: upcoming,
-            plan: PlannerStorage.loadDailyPlan(),
-            completedSteps: PlannerStorage.loadCompletedSteps(),
+            widgetTaskPage: PlannerStorage.loadWidgetTaskPage(),
             wisdom: PlannerStorage.wisdom(for: date),
-            theme: PlannerStorage.loadTheme()
+            theme: PlannerStorage.loadTheme(),
+            snapshot: PlannerStorage.loadWidgetSnapshot()
         )
     }
 }
@@ -87,31 +86,39 @@ struct LotusWidgetView: View {
     private var accent: Color { entry.theme.accent }
     private var soft: Color { entry.theme.soft }
 
-    private var todaySteps: [PlannedTask] {
-        let todayKey = PlannerStorage.dateKey(for: .now)
-        return entry.plan?.schedule.filter { $0.scheduledDate == todayKey } ?? []
+    private var hasUpcomingAppointment: Bool {
+        guard entry.snapshot.nextAppointmentTitle != nil,
+              let start = entry.snapshot.nextAppointmentStart else { return false }
+        return start > entry.date
     }
 
-    /// عدد خطوات اليوم غير المؤشّرة. يُستعمل فقط حين توجد خطة لليوم.
-    private var remainingTodayCount: Int {
-        todaySteps.filter { entry.completedSteps[$0.id] == nil }.count
-    }
-
-    private var taskCountTitle: String {
-        switch remainingTodayCount {
-        case 0: "اكتملت خطوات اليوم ✨"
-        case 1: "بقيت خطوة واحدة اليوم"
-        case 2: "بقيت خطوتان اليوم"
-        default: "بقيت \(remainingTodayCount) خطوات اليوم"
+    /// عدد المهام الظاهرة في نافذة التمرير بحسب حجم الودجت.
+    private var visibleCount: Int {
+        switch family {
+        case .systemSmall: hasUpcomingAppointment ? 1 : 2
+        case .systemLarge: hasUpcomingAppointment ? 8 : 9
+        default: hasUpcomingAppointment ? 1 : 2
         }
     }
 
-    /// ملخص المهام القادمة حين لا توجد خطة لليوم.
-    private var upcomingTitle: String {
+    /// أول مهمة ظاهرة. الودجت لا يدعم التمرير الحر في macOS، فالسهمان يمرّران مهمةً مهمة
+    /// بينما يبقى العنوان والعبارة ثابتين في الأعلى.
+    private var scrollOffset: Int {
+        min(max(0, entry.widgetTaskPage), max(0, entry.tasks.count - visibleCount))
+    }
+
+    private var canScrollUp: Bool { scrollOffset > 0 }
+    private var canScrollDown: Bool { scrollOffset + visibleCount < entry.tasks.count }
+
+    private var visibleTasks: [PlannerTask] {
+        Array(entry.tasks.dropFirst(scrollOffset).prefix(visibleCount))
+    }
+
+    private var mainTaskCountTitle: String {
         switch entry.tasks.count {
-        case 1: "مهمة واحدة قادمة"
-        case 2: "مهمتان قادمتان"
-        default: "\(entry.tasks.count) مهام قادمة"
+        case 1: "مهمة رئيسية واحدة"
+        case 2: "مهمتان رئيسيتان"
+        default: "\(entry.tasks.count) مهام رئيسية"
         }
     }
 
@@ -127,112 +134,161 @@ struct LotusWidgetView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: family == .systemSmall ? 7 : 9) {
-                HStack {
-                    Text(entry.theme.symbol)
-                    Text("خُطاي")
-                        .font(.headline.weight(.semibold))
-                    Spacer()
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            // ١) أعلى ثابت: العنوان والعبارة.
+            fixedHeader
+                .layoutPriority(2)
+                .padding(.bottom, 6)
 
-                if !todaySteps.isEmpty {
-                    taskSummary
-                    ForEach(Array(todaySteps.prefix(family == .systemSmall ? 2 : 3))) { plannedTask in
-                        planLine(plannedTask)
-                    }
-                    Spacer(minLength: 0)
-                } else if entry.tasks.isEmpty {
-                    Spacer()
-                    Text("يومك هادئ الآن")
-                        .font(.subheadline.weight(.medium))
-                    Text("في انتظار أول مهمة")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                } else {
-                    upcomingSummary
-                    Spacer(minLength: 0)
-                }
+            // ٢) الوسط وحده يتغير: المهام تُمرَّر بالسهمين داخل مساحتها.
+            taskArea
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .clipped()
 
-                Divider()
-                Text(entry.wisdom.text)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(family == .systemSmall ? 2 : 1)
-                    .foregroundStyle(accent)
+            // ٣) أسفل ثابت: العبارة المتجددة.
+            if family != .systemSmall {
+                fixedFooter
+                    .layoutPriority(2)
+                    .padding(.top, 4)
+            }
+        }
+        .environment(\.layoutDirection, .rightToLeft)
+        // الوضع الفاتح دائمًا مثل التطبيق.
+        .environment(\.colorScheme, .light)
+        .widgetURL(URL(string: "khutaiapp://open"))
+        .containerBackground(soft.gradient, for: .widget)
+    }
+
+    @ViewBuilder
+    private var taskArea: some View {
+        VStack(alignment: .leading, spacing: family == .systemSmall ? 4 : 5) {
+            nextAppointmentLine
+            if entry.tasks.isEmpty {
+                Text("يومك هادئ الآن، في انتظار أول مهمة")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
+            } else {
+                mainTaskSummary
+                ForEach(visibleTasks) { task in
+                    mainTaskLine(task)
+                }
+            }
+        }
+    }
+
+    private var fixedFooter: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Divider()
+                .padding(.bottom, 3)
+            Text(entry.wisdom.text)
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(accent)
+            if family == .systemLarge {
                 Text(entry.wisdom.source)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-            .padding(2)
-            .environment(\.layoutDirection, .rightToLeft)
-        .widgetURL(URL(string: "lotusplanner://open"))
-        .containerBackground(soft.gradient, for: .widget)
+        }
     }
 
-    private var taskSummary: some View {
+    private var fixedHeader: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 5) {
+                Text(entry.theme.symbol)
+                Text("خُطاي")
+                    .font(.headline.weight(.semibold))
+                Spacer(minLength: 0)
+            }
+            Text("If you aim, aim at the stars. So, if you miss, you land on the moon.")
+                .font(.system(size: family == .systemSmall ? 9 : 10, weight: .semibold))
+                .foregroundStyle(accent)
+                .lineLimit(family == .systemSmall ? 2 : 1)
+                .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.leading)
+                .environment(\.layoutDirection, .leftToRight)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// الموعد القادم من التقويم (إن وُجد ولم يبدأ بعد).
+    @ViewBuilder
+    private var nextAppointmentLine: some View {
+        if let title = entry.snapshot.nextAppointmentTitle,
+           let start = entry.snapshot.nextAppointmentStart,
+           start > entry.date {
+            HStack(spacing: 6) {
+                Image(systemName: "calendar")
+                    .foregroundStyle(accent)
+                Text(title)
+                    .font(.caption2.weight(.medium))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Text(PlannerCalendar.current.isDateInToday(start)
+                     ? PlannerCalendar.text(for: start, format: "h:mm a")
+                     : PlannerCalendar.text(for: start, format: "EEE h:mm a"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var mainTaskSummary: some View {
         HStack(spacing: 6) {
-            Image(systemName: remainingTodayCount == 0 ? "checkmark.circle.fill" : "sparkles")
-            Text(taskCountTitle)
+            Image(systemName: "list.bullet.rectangle")
+            Text(mainTaskCountTitle)
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
             Spacer(minLength: 0)
+            if canScrollUp || canScrollDown { scrollControls }
         }
         .foregroundStyle(accent)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 6)
-        .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
     }
 
-    /// يُعرض حين لا توجد خطة لليوم.
-    ///
-    /// سابقًا كان الودجت يسرد المهام هنا بلا مربع تشييك ولا خط شطب وتحت عنوان
-    /// «مهام اليوم»، فتبدو جامدة ومضلِّلة لأنها قد تكون لمواعيد بعيدة. صار
-    /// يعرض بدلها معلومة صادقة: كم مهمة قادمة، ومتى أقرب موعد.
-    private var upcomingSummary: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 6) {
-                Image(systemName: "calendar")
-                Text(upcomingTitle)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-                Spacer(minLength: 0)
+    /// سهما التمرير: مهمة للأعلى أو للأسفل.
+    private var scrollControls: some View {
+        HStack(spacing: 6) {
+            Button(intent: SetWidgetTaskPageIntent(page: max(0, scrollOffset - 1))) {
+                Image(systemName: "chevron.up")
             }
-            .foregroundStyle(accent)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 6)
-            .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+            .buttonStyle(.plain)
+            .disabled(!canScrollUp)
+            .opacity(canScrollUp ? 1 : 0.3)
+            .accessibilityLabel("تمرير للأعلى")
 
-            // سطر واحد مضغوط: عنوان أقرب مهمة وموعدها. أي أسطر إضافية هنا
-            // تتجاوز ارتفاع الودجت فتدفع الهيدر خارج الإطار.
-            if let nearest = entry.tasks.first {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(accent)
-                        .frame(width: 5, height: 5)
-                    Text(nearest.title)
-                        .font(.caption.weight(.medium))
-                        .lineLimit(1)
-                    Text("· \(deadlineText(for: nearest.deadline))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                }
+            Text("\(scrollOffset + 1) إلى \(min(scrollOffset + visibleCount, entry.tasks.count))")
+                .font(.caption2.monospacedDigit())
+
+            Button(intent: SetWidgetTaskPageIntent(page: scrollOffset + 1)) {
+                Image(systemName: "chevron.down")
             }
+            .buttonStyle(.plain)
+            .disabled(!canScrollDown)
+            .opacity(canScrollDown ? 1 : 0.3)
+            .accessibilityLabel("تمرير للأسفل")
         }
     }
 
-    private func planLine(_ task: PlannedTask) -> some View {
-        HStack(spacing: 7) {
-            Button(intent: TogglePlannedStepIntent(stepID: task.id)) {
-                Image(systemName: entry.completedSteps[task.id] == nil ? "circle" : "checkmark.circle.fill")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(accent)
+    /// سطر مهمة واحد مضغوط: الأيقونة والعنوان، ثم موعدها.
+    private func mainTaskLine(_ task: PlannerTask) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: task.category == .work ? "house.fill" : "briefcase.fill")
+                .font(.caption2)
+                .foregroundStyle(accent)
             Text(task.title)
                 .font(.caption.weight(.medium))
                 .lineLimit(1)
-            Spacer(minLength: 0)
+            Spacer(minLength: 4)
+            Text(deadlineText(for: task.deadline))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .fixedSize()
         }
     }
 }
@@ -246,7 +302,7 @@ struct LotusPlannerWidget: Widget {
         }
         .configurationDisplayName("خُطاي")
         .description("مهامك اليومية مرتبة مع عبارة تتجدد كل ساعة.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 

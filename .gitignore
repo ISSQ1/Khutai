@@ -1,0 +1,26 @@
+# مخرجات البناء
+build/
+DerivedData/
+*.xcarchive
+*.dSYM/
+
+# إعدادات Xcode الخاصة بالمستخدم — تحتوي مسارات شخصية
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+
+# نسخ احتياطية محلية
+_نسخة-احتياطية*
+*.bak
+
+# ملفات النظام
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# حزم التوزيع (تُرفع في Releases لا في المستودع)
+*.zip
+*.dmg
+*.tar.gz
+dist/

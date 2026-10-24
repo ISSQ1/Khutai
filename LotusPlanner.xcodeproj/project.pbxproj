@@ -15,6 +15,10 @@
 		A10000000000000000000007 /* LotusPlannerWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* LotusPlannerWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A10000000000000000000008 /* AIPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* AIPlanner.swift */; };
 		A10000000000000000000009 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* AppIcon.icns */; };
+		A1000000000000000000000A /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000E /* Scheduler.swift */; };
+		A1000000000000000000000B /* CalendarSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000F /* CalendarSync.swift */; };
+		A1000000000000000000000C /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000010 /* NotificationService.swift */; };
+		A1000000000000000000000D /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +57,10 @@
 		A2000000000000000000000B /* Widget Entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LotusPlannerWidget.entitlements; sourceTree = "<group>"; };
 		A2000000000000000000000C /* AIPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPlanner.swift; sourceTree = "<group>"; };
 		A2000000000000000000000D /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		A2000000000000000000000E /* Scheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scheduler.swift; sourceTree = "<group>"; };
+		A2000000000000000000000F /* CalendarSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarSync.swift; sourceTree = "<group>"; };
+		A20000000000000000000010 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		A20000000000000000000011 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,7 +81,7 @@
 		};
 		A60000000000000000000002 /* LotusPlanner */ = {
 			isa = PBXGroup;
-			children = (A20000000000000000000001, A20000000000000000000002, A20000000000000000000003, A2000000000000000000000C, A2000000000000000000000D, A20000000000000000000008, A20000000000000000000009, );
+			children = (A20000000000000000000001, A20000000000000000000002, A20000000000000000000003, A2000000000000000000000C, A2000000000000000000000E, A2000000000000000000000F, A20000000000000000000010, A20000000000000000000011, A2000000000000000000000D, A20000000000000000000008, A20000000000000000000009, );
 			path = LotusPlanner;
 			sourceTree = "<group>";
 		};
@@ -152,7 +160,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		A80000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000008, ); runOnlyForDeploymentPostprocessing = 0; };
+		A80000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000008, A1000000000000000000000A, A1000000000000000000000B, A1000000000000000000000C, A1000000000000000000000D, ); runOnlyForDeploymentPostprocessing = 0; };
 		A80000000000000000000002 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000005, A10000000000000000000006, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
