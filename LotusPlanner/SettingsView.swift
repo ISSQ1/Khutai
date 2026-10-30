@@ -127,8 +127,14 @@ struct SettingsSheet: View {
                     .disabled(!store.settings.appointmentRemindersEnabled)
                 }
                 Toggle("تذكير بدء العمل على المهام", isOn: binding(\.startRemindersEnabled))
-                Toggle("تذكيرات المواعيد النهائية المطلوبة في التفاصيل", isOn: binding(\.deadlineRemindersEnabled))
+                Toggle("تنبيهات المهام والخطوات", isOn: binding(\.deadlineRemindersEnabled))
                 DatePicker("وقت التذكيرات اليومية", selection: timeBinding(\.reminderTimeMinutes), displayedComponents: .hourAndMinute)
+                Toggle("صوت التنبيهات", isOn: binding(\.notificationSound))
+                Button {
+                    store.sendTestNotification()
+                } label: {
+                    Label("تجربة التنبيه (يصل بعد ٥ ثوانٍ)", systemImage: "bell.badge")
+                }
             }
         }
     }
@@ -167,6 +173,12 @@ struct SettingsSheet: View {
                 }
             } else {
                 Toggle("مزامنة المهام مع قائمة «خُطاي» في «التذكيرات»", isOn: binding(\.remindersSyncEnabled))
+                Toggle("إرسال تنبيهات المهام إلى الآيفون عبر «التذكيرات»", isOn: binding(\.remindersOnIPhone))
+                if store.settings.remindersOnIPhone {
+                    Text("إن وصلك التنبيه مرتين على الماك، أطفئ إشعارات تطبيق «التذكيرات» على الماك من إعدادات النظام ← الإشعارات.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             if let message = store.calendarMessage {

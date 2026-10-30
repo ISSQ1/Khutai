@@ -85,6 +85,7 @@ final class PlannerStore: ObservableObject {
         }
         // وقت التذكيرات أو تفعيلها تغيّر: تُحدَّث التنبيهات في «التذكيرات» أيضًا.
         if newSettings.reminderTimeMinutes != oldSettings.reminderTimeMinutes
+            || newSettings.remindersOnIPhone != oldSettings.remindersOnIPhone
             || newSettings.deadlineRemindersEnabled != oldSettings.deadlineRemindersEnabled
             || newSettings.notificationsEnabled != oldSettings.notificationsEnabled {
             scheduleReminderSync()
@@ -253,7 +254,8 @@ final class PlannerStore: ObservableObject {
                 TaskReminder(
                     label: reminder.label,
                     minutesBeforeDeadline: reminder.minutesBeforeDeadline,
-                    dateTime: reminder.dateTime.flatMap { Self.shiftReminderDateTime($0, by: component) }
+                    dateTime: reminder.dateTime.flatMap { Self.shiftReminderDateTime($0, by: component) },
+                    fromNotes: reminder.fromNotes
                 )
             },
             interpretedNotes: task.interpretedNotes ?? task.trimmedNotes,
@@ -347,20 +349,40 @@ final class PlannerStore: ObservableObject {
         persist()
     }
 
+    /// تنبيهات المهمة الرئيسية كما ضبطتها المستخدمة من زر الجرس.
+    func setReminders(_ reminders: [TaskReminder], for taskID: UUID) {
+        guard let index = tasks.firstIndex(where: { $0.id == taskID }) else { return }
+        tasks[index].reminders = reminders
+        persist()
+    }
+
+    /// تنبيهات خطوة فرعية (تعدّل التنبيهات وحدها دون بقية الخطوة).
+    func setReminders(_ reminders: [TaskReminder], forStep stepID: UUID, in taskID: UUID) {
+        modifySubtask(stepID, in: taskID) { step in
+            step.reminders = reminders
+        }
+    }
+
+    /// إشعار تجريبي بعد ثوانٍ للتأكد من وصول التنبيه وصوته.
+    func sendTestNotification() {
+        NotificationService.shared.sendTest(playsSound: settings.notificationSound, symbol: theme.symbol)
+    }
+
     func updateSubtask(_ updatedSubtask: PlannerSubtask, in taskID: UUID) {
         modifySubtask(updatedSubtask.id, in: taskID) { subtask in
             subtask = updatedSubtask
         }
     }
 
-    func addSubtask(to taskID: UUID, title: String, scheduledDate: Date?) {
+    func addSubtask(to taskID: UUID, title: String, scheduledDate: Date?, dueMinutes: Int? = nil) {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanTitle.isEmpty,
               let index = tasks.firstIndex(where: { $0.id == taskID }) else { return }
         tasks[index].subtasks.append(
             PlannerSubtask(
                 title: cleanTitle,
-                scheduledDate: scheduledDate.map(PlannerStorage.dateKey(for:))
+                scheduledDate: scheduledDate.map(PlannerStorage.dateKey(for:)),
+                dueMinutes: scheduledDate == nil ? nil : dueMinutes
             )
         )
         persist()
@@ -674,9 +696,8 @@ final class PlannerStore: ObservableObject {
                     )
                 )
             }
-            // إن كانت المهمة مربوطة بـ«التذكيرات» فالتنبيه يصل من هناك (للماك والهاتف)،
-            // فلا نكرره بإشعار من خُطاي.
-            if settings.deadlineRemindersEnabled, !isDeliveredByReminders(task) {
+            // تنبيهات خُطاي تصل دائمًا على الماك بصوت. (نسخة الآيفون تأتي من «التذكيرات».)
+            if settings.deadlineRemindersEnabled {
                 for reminder in task.reminders {
                     guard let alertDate = self.fireDate(for: reminder, of: task) else { continue }
                     items.append(
@@ -689,9 +710,26 @@ final class PlannerStore: ObservableObject {
                         )
                     )
                 }
+                // تنبيهات الخطوات الفرعية.
+                for step in task.subtasks where !step.isDone {
+                    let dueText = step.dueDate(defaultMinutes: settings.reminderTimeMinutes)
+                        .map { stepDueText(step, date: $0) }
+                    for reminder in step.reminders {
+                        guard let alertDate = fireDate(for: reminder, of: step) else { continue }
+                        items.append(
+                            PlannedNotification(
+                                id: "step-\(step.id.uuidString)-\(reminder.id.uuidString)",
+                                title: "تذكير: \(step.title)",
+                                body: [task.title, reminder.label, dueText].compactMap { $0 }.joined(separator: " · "),
+                                fireDate: alertDate,
+                                isMorningSummary: false
+                            )
+                        )
+                    }
+                }
             }
         }
-        service.replaceAll(with: items)
+        service.replaceAll(with: items, playsSound: settings.notificationSound)
         hasScheduledNotifications = true
     }
 
@@ -711,19 +749,30 @@ final class PlannerStore: ObservableObject {
         return base.addingTimeInterval(TimeInterval(-minutes * 60))
     }
 
+    /// وقت تنبيه خطوة فرعية: وقت محدد، أو قبل موعد تسليمها.
+    private func fireDate(for reminder: TaskReminder, of step: PlannerSubtask) -> Date? {
+        if let text = reminder.dateTime {
+            return Self.reminderDate(from: text)
+        }
+        guard let minutes = reminder.minutesBeforeDeadline,
+              let due = step.dueDate(defaultMinutes: settings.reminderTimeMinutes) else { return nil }
+        return due.addingTimeInterval(TimeInterval(-minutes * 60))
+    }
+
+    private func stepDueText(_ step: PlannerSubtask, date: Date) -> String {
+        step.dueMinutes == nil
+            ? "التسليم \(PlannerCalendar.text(for: date, format: "d MMMM"))"
+            : "التسليم \(PlannerCalendar.text(for: date, format: "d MMMM، h:mm a"))"
+    }
+
     /// تنبيهات التذكير المطلوبة للمهمة في «التذكيرات» (القادمة فقط).
     /// nil = المهمة بلا تذكيرات من التفاصيل، فلا نمس تنبيهات وضعتها المستخدمة بنفسها هناك.
     private func reminderAlarmDates(for task: PlannerTask) -> [Date]? {
         guard !task.reminders.isEmpty else { return nil }
-        guard settings.notificationsEnabled, settings.deadlineRemindersEnabled, !task.isDone else { return [] }
+        guard settings.notificationsEnabled, settings.deadlineRemindersEnabled,
+              settings.remindersOnIPhone, !task.isDone else { return [] }
         let now = Date()
         return task.reminders.compactMap { fireDate(for: $0, of: task) }.filter { $0 > now }.sorted()
-    }
-
-    private func isDeliveredByReminders(_ task: PlannerTask) -> Bool {
-        settings.remindersSyncEnabled
-            && calendarService.remindersAuthorized
-            && !(task.reminderItemID ?? "").isEmpty
     }
 
     /// نص ملخص الصباح ليوم معيّن.
@@ -1100,15 +1149,23 @@ final class PlannerStore: ObservableObject {
             return key
         }
         func makeSubtask(_ step: AIStep) -> PlannerSubtask {
-            PlannerSubtask(
+            let date = validDate(step.scheduledDate)
+            return PlannerSubtask(
                 title: cleanedAssistantText(step.title),
                 note: cleanedAssistantText(step.note),
                 estimatedMinutes: step.estimatedMinutes,
-                scheduledDate: validDate(step.scheduledDate)
+                scheduledDate: date,
+                dueMinutes: date == nil ? nil : step.dueTime.flatMap(Self.minutes(fromTime:)),
+                reminders: makeReminders(step.reminders)
             )
         }
 
+        // الخطوات المستخرجة سابقًا: نحتفظ بإعداداتها اليدوية (الموعد والتنبيهات) إن عادت بالعنوان نفسه.
+        var previousSteps: [String: PlannerSubtask] = [:]
         if mode == .interpretNotes {
+            for step in tasks[index].subtasks where step.fromNotes && !step.isDone {
+                previousSteps[normalizedTitle(step.title)] = step
+            }
             // التفاصيل هي المرجع: نستبدل الخطوات المستخرجة سابقًا ولم تُنجز بعد،
             // ونُبقي المنجزة واليدوية والمقبولة من الاقتراحات.
             tasks[index].subtasks.removeAll { $0.fromNotes && !$0.isDone }
@@ -1121,6 +1178,13 @@ final class PlannerStore: ObservableObject {
             for step in interpretation.subtasks {
                 var subtask = makeSubtask(step)
                 subtask.fromNotes = true
+                if let previous = previousSteps[normalizedTitle(subtask.title)] {
+                    if subtask.scheduledDate == nil {
+                        subtask.scheduledDate = previous.scheduledDate
+                        subtask.dueMinutes = previous.dueMinutes
+                    }
+                    subtask.reminders += previous.reminders.filter { !$0.fromNotes }
+                }
                 guard !subtask.title.isEmpty, knownTitles.insert(normalizedTitle(subtask.title)).inserted else { continue }
                 tasks[index].subtasks.append(subtask)
             }
@@ -1140,13 +1204,9 @@ final class PlannerStore: ObservableObject {
             if let recurrence = interpretation.planning.recurrence.flatMap(TaskRecurrence.init(rawValue:)) {
                 tasks[index].recurrence = recurrence
             }
-            tasks[index].reminders = interpretation.reminders.map {
-                TaskReminder(
-                    label: cleanedAssistantText($0.label),
-                    minutesBeforeDeadline: $0.minutesBeforeDeadline,
-                    dateTime: $0.dateTime.flatMap { self.validReminderDateTime($0) }
-                )
-            }
+            // تذكيرات التفاصيل تُستبدل، والتذكيرات التي أضافتها المستخدمة بنفسها تبقى.
+            tasks[index].reminders = tasks[index].reminders.filter { !$0.fromNotes }
+                + makeReminders(interpretation.reminders)
             // إن عُدّلت التفاصيل أثناء الانتظار تبقى بحاجة لقراءة جديدة.
             tasks[index].interpretedNotes = sentNotes
         }
@@ -1160,9 +1220,31 @@ final class PlannerStore: ObservableObject {
             var suggestion = makeSubtask(step)
             suggestion.scheduledDate = nil
             suggestion.estimatedMinutes = nil
+            suggestion.dueMinutes = nil
+            suggestion.reminders = []
             guard !suggestion.title.isEmpty, knownTitles.insert(normalizedTitle(suggestion.title)).inserted else { continue }
             tasks[index].suggestedSubtasks.append(suggestion)
         }
+    }
+
+    private func makeReminders(_ items: [AIReminder]) -> [TaskReminder] {
+        items.compactMap { item in
+            let dateTime = item.dateTime.flatMap { self.validReminderDateTime($0) }
+            guard item.minutesBeforeDeadline != nil || dateTime != nil else { return nil }
+            return TaskReminder(
+                label: cleanedAssistantText(item.label),
+                minutesBeforeDeadline: dateTime == nil ? item.minutesBeforeDeadline : nil,
+                dateTime: dateTime,
+                fromNotes: true
+            )
+        }
+    }
+
+    /// "HH:mm" → دقائق من منتصف الليل.
+    nonisolated static func minutes(fromTime text: String) -> Int? {
+        let parts = text.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2, (0..<24).contains(parts[0]), (0..<60).contains(parts[1]) else { return nil }
+        return parts[0] * 60 + parts[1]
     }
 
     /// نص المساعد بلا شرطات طويلة (لا تُستخدم في العربية).

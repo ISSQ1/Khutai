@@ -20,6 +20,9 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     /// يصبح true عند الضغط على إشعار ملخص الصباح، فتفتح مراجعة الصباح.
     @Published var isMorningCheckInRequested = false
     @Published private(set) var isAuthorized = false
+    /// معرّفات ما جدولناه آخر مرة، فنستبدلها وحدها (ولا نمس إشعار التجربة).
+    private var scheduledIDs: Set<String> = []
+    private var hasClearedOldRequests = false
 
     private override init() {
         super.init()
@@ -37,9 +40,16 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     }
 
     /// يستبدل كل الإشعارات المجدولة بالقائمة الجديدة (بحد أقصى ٦٠ إشعارًا، الأقرب أولًا).
-    func replaceAll(with notifications: [PlannedNotification]) {
+    func replaceAll(with notifications: [PlannedNotification], playsSound: Bool) {
         let center = UNUserNotificationCenter.current()
-        center.removeAllPendingNotificationRequests()
+        if hasClearedOldRequests {
+            center.removePendingNotificationRequests(withIdentifiers: Array(scheduledIDs))
+        } else {
+            // أول جدولة بعد التشغيل: نزيل ما بقي من تشغيل سابق.
+            center.removeAllPendingNotificationRequests()
+            hasClearedOldRequests = true
+        }
+        scheduledIDs = []
         let now = Date()
         let upcoming = notifications
             .filter { $0.fireDate > now.addingTimeInterval(5) }
@@ -50,7 +60,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             let content = UNMutableNotificationContent()
             content.title = item.title
             content.body = item.body
-            content.sound = .default
+            content.sound = playsSound ? .default : nil
             if item.isMorningSummary {
                 content.categoryIdentifier = Self.morningCategory
             }
@@ -58,11 +68,24 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             let request = UNNotificationRequest(identifier: item.id, content: content, trigger: trigger)
             center.add(request, withCompletionHandler: nil)
+            scheduledIDs.insert(item.id)
         }
+    }
+
+    /// إشعار تجريبي بعد خمس ثوانٍ (يمكن إغلاق النافذة لرؤيته كما سيظهر فعلًا).
+    func sendTest(playsSound: Bool, symbol: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "\(symbol) تجربة تنبيه خُطاي"
+        content.body = playsSound ? "هكذا ستصلك التنبيهات، مع الصوت." : "هكذا ستصلك التنبيهات (الصوت مطفأ من الإعدادات)."
+        content.sound = playsSound ? .default : nil
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+        let request = UNNotificationRequest(identifier: "khutai-test-\(UUID().uuidString)", content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
     }
 
     func removeAll() {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        scheduledIDs = []
     }
 
     // MARK: - UNUserNotificationCenterDelegate

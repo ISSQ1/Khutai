@@ -9,13 +9,6 @@ private enum ComposerMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-private enum PlannerViewMode: String, CaseIterable, Identifiable {
-    case today = "اليوم"
-    case month = "الشهر"
-
-    var id: String { rawValue }
-}
-
 struct ContentView: View {
     @EnvironmentObject private var store: PlannerStore
     @EnvironmentObject private var calendarService: CalendarService
@@ -33,7 +26,6 @@ struct ContentView: View {
     @State private var deadline = Date()
     @State private var category = TaskCategory.work
     @State private var priority = TaskPriority.normal
-    @State private var viewMode = PlannerViewMode.today
     @State private var selectedDate = Date()
     @State private var taskBeingEdited: PlannerTask?
     @State private var taskPendingDeletion: PlannerTask?
@@ -43,6 +35,7 @@ struct ContentView: View {
     /// المهام التي اختير لخطوتها الجديدة يوم محدد. بدون ذلك تُضاف الخطوة بلا يوم.
     @State private var datedNewSubtaskTaskIDs: Set<UUID> = []
     @State private var subtaskBeingEdited: SubtaskEditTarget?
+    @State private var remindersBeingEdited: ReminderEditTarget?
     @State private var isMonthPickerPresented = false
 
     private var accent: Color { store.theme.accent }
@@ -59,12 +52,7 @@ struct ContentView: View {
                     workdayCapacity
                     connectionCard
                     taskComposer
-                    planViewSwitcher
-                    if viewMode == .today {
-                        dayPlanCard(for: .now)
-                    } else {
-                        monthCalendar
-                    }
+                    monthCalendar
                     TimelineView(.periodic(from: .now, by: 60)) { context in
                         taskSections(at: context.date)
                     }
@@ -124,6 +112,10 @@ struct ContentView: View {
         }
         .sheet(item: $subtaskBeingEdited) { target in
             SubtaskEditorSheet(target: target)
+                .environmentObject(store)
+        }
+        .sheet(item: $remindersBeingEdited) { target in
+            ReminderEditorSheet(target: target)
                 .environmentObject(store)
         }
         .alert(
@@ -431,18 +423,6 @@ struct ContentView: View {
         .background(soft.opacity(0.65), in: RoundedRectangle(cornerRadius: 18))
     }
 
-    private var planViewSwitcher: some View {
-        Picker("طريقة العرض", selection: $viewMode) {
-            ForEach(PlannerViewMode.allCases) { mode in
-                Text(mode.rawValue).tag(mode)
-            }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .frame(maxWidth: 240)
-        .frame(maxWidth: .infinity)
-    }
-
     private func dayPlanCard(for date: Date) -> some View {
         let groups = store.dayGroups(on: date)
         let dueTasks = store.deadlines(on: date)
@@ -450,26 +430,11 @@ struct ContentView: View {
         let isToday = PlannerCalendar.current.isDateInToday(date)
 
         return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(isToday ? "خطة اليوم" : PlannerCalendar.text(for: date, format: "d MMMM yyyy"))
-                    .font(.title3.weight(.semibold))
-                Spacer()
-                if isToday {
-                    Button {
-                        Task { await store.refreshPlan() }
-                    } label: {
-                        Label("إعادة التخطيط", systemImage: "arrow.clockwise")
-                    }
-                    .disabled(store.isPlanning)
-                    .help("يقرأ التفاصيل الجديدة أو المعدّلة فقط، ولا يضيف خطوات من عنده")
-                }
-            }
-
-            if isToday, let overview = store.todaysPlan?.overview {
-                Text(overview)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            // تفاصيل اليوم المختار في التقويم: مواعيده وتسليماته وخطواته.
+            Text(isToday
+                 ? "اليوم، \(PlannerCalendar.text(for: date, format: "d MMMM"))"
+                 : PlannerCalendar.text(for: date, format: "EEEE d MMMM yyyy"))
+                .font(.title3.weight(.semibold))
 
             if !dayAppointments.isEmpty {
                 appointmentsList(dayAppointments)
@@ -479,32 +444,14 @@ struct ContentView: View {
                 deadlinesStrip(dueTasks)
             }
 
-            if isToday, !store.focusItems.isEmpty {
-                focusSection(store.focusItems)
-            }
-
-            if isToday, !store.overdueStepGroups.isEmpty {
-                overdueSection(store.overdueStepGroups)
-            }
-
-            if groups.isEmpty && dayAppointments.isEmpty && dueTasks.isEmpty
-                && !(isToday && (!store.focusItems.isEmpty || !store.overdueStepGroups.isEmpty)) {
-                Text("لا توجد خطوات أو مواعيد لهذا اليوم.")
+            if groups.isEmpty && dayAppointments.isEmpty && dueTasks.isEmpty {
+                Text("لا مواعيد ولا تسليمات في هذا اليوم.")
+                    .font(.callout)
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 16)
             } else if !groups.isEmpty {
                 ForEach(groups) { group in
                     dayGroupView(group)
                 }
-            }
-
-            if isToday, let encouragement = store.todaysPlan?.encouragement {
-                Text(encouragement)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(accent)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, 4)
             }
         }
         .padding(18)
@@ -554,70 +501,6 @@ struct ContentView: View {
         .background(Color.secondary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
     }
 
-    /// المهام الرئيسية التي حان وقت العمل عليها بحسب الجدولة المقترحة.
-    private func focusSection(_ items: [FocusItem]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("للعمل عليه اليوم", systemImage: "sun.max")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(accent)
-            ForEach(items) { item in
-                HStack(spacing: 8) {
-                    Image(systemName: item.task.category == .work ? "house.fill" : "briefcase.fill")
-                        .font(.caption)
-                        .foregroundStyle(accent)
-                    Text(item.task.title)
-                        .font(.callout.weight(.medium))
-                    Spacer(minLength: 0)
-                    if item.info.isAtRisk {
-                        Text(item.info.isOverdue ? "متأخرة" : "الوقت ضيق")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.orange)
-                    }
-                    if item.info.todayMinutes > 0 {
-                        Text("حوالي \(TaskPlanningPreferences.durationText(item.info.todayMinutes))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(soft.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
-    }
-
-    /// خطوات حُدد لها يوم مضى ولم تُنجز. لا تُنقل إلا بطلبك.
-    private func overdueSection(_ groups: [DayTaskGroup]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("خطوات متأخرة", systemImage: "clock.arrow.circlepath")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
-            ForEach(groups) { group in
-                ForEach(group.steps) { step in
-                    HStack(spacing: 8) {
-                        Text("\(group.task.title) ‹ \(step.title)")
-                            .font(.callout)
-                        Spacer(minLength: 0)
-                        Button("إلى اليوم") {
-                            store.reschedule(stepID: step.id, in: group.task.id, to: .now)
-                        }
-                        .buttonStyle(.borderless)
-                        .font(.caption)
-                        Button("بلا يوم") {
-                            store.reschedule(stepID: step.id, in: group.task.id, to: nil)
-                        }
-                        .buttonStyle(.borderless)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(Color.orange.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
-    }
-
     /// المهام الرئيسية التي يحل موعدها في هذا اليوم.
     private func deadlinesStrip(_ dueTasks: [PlannerTask]) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -641,8 +524,8 @@ struct ContentView: View {
     private func dayGroupView(_ group: DayTaskGroup) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: group.task.category == .work ? "house.fill" : "briefcase.fill")
-                    .font(.caption)
+                Circle()
+                    .frame(width: 6, height: 6)
                 Text(group.task.title)
                     .font(.subheadline.weight(.semibold))
                 Spacer(minLength: 0)
@@ -683,9 +566,13 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                 }
                 HStack(spacing: 10) {
-                    if showsDate, step.scheduledDate != nil {
-                        Label(stepDateText(step.scheduledDate), systemImage: "calendar")
+                    if step.scheduledDate != nil, showsDate || step.dueMinutes != nil {
+                        Label(stepDueLabel(step, includesDay: showsDate), systemImage: step.dueMinutes == nil ? "calendar" : "calendar.badge.clock")
                             .foregroundStyle(isOverdue ? Color.red.opacity(0.8) : accent)
+                    }
+                    if !step.reminders.isEmpty {
+                        Label(step.reminders.count == 1 ? step.reminders[0].label : "\(step.reminders.count) تنبيهات", systemImage: "bell.fill")
+                            .foregroundStyle(accent)
                     }
                     if let estimatedMinutes = step.estimatedMinutes {
                         Label("حوالي \(estimatedMinutes) دقيقة", systemImage: "clock")
@@ -695,16 +582,41 @@ struct ContentView: View {
                 .font(.caption2.weight(.medium))
             }
             Spacer()
+            if !step.isDone {
+                Button {
+                    remindersBeingEdited = ReminderEditTarget(step: step, taskID: taskID)
+                } label: {
+                    Image(systemName: step.reminders.isEmpty ? "bell" : "bell.fill")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(step.reminders.isEmpty ? Color.secondary : accent)
+                .help("تنبيهات الخطوة")
+            }
         }
         .contentShape(Rectangle())
         .contextMenu {
             Button("تعديل الخطوة") {
                 subtaskBeingEdited = SubtaskEditTarget(taskID: taskID, subtask: step)
             }
+            Button("تنبيهات الخطوة") {
+                remindersBeingEdited = ReminderEditTarget(step: step, taskID: taskID)
+            }
             Button("حذف الخطوة", role: .destructive) {
                 store.deleteSubtask(step.id, from: taskID)
             }
         }
+    }
+
+    /// يوم تسليم الخطوة ووقته إن حُدد، مثل «التسليم: غدًا، 3:00 م».
+    private func stepDueLabel(_ step: PlannerSubtask, includesDay: Bool) -> String {
+        var text = includesDay ? stepDateText(step.scheduledDate) : ""
+        if let minutes = step.dueMinutes,
+           let time = PlannerCalendar.current.date(byAdding: .minute, value: minutes, to: PlannerCalendar.current.startOfDay(for: .now)) {
+            let timeText = PlannerCalendar.text(for: time, format: "h:mm a")
+            text = text.isEmpty ? timeText : "\(text)، \(timeText)"
+        }
+        return "التسليم: \(text)"
     }
 
     private func stepDateText(_ dateKey: String?) -> String {
@@ -1055,6 +967,15 @@ struct ContentView: View {
 
                 Spacer()
                 Button {
+                    remindersBeingEdited = ReminderEditTarget(task: task)
+                } label: {
+                    Image(systemName: task.reminders.isEmpty ? "bell" : "bell.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(accent)
+                .help(task.reminders.isEmpty ? "إضافة تنبيه للمهمة" : "تنبيهات المهمة (\(task.reminders.count))")
+
+                Button {
                     store.setCategory(task.category == .work ? .personal : .work, for: task.id)
                 } label: {
                     Image(systemName: task.category == .work ? "house" : "briefcase")
@@ -1156,7 +1077,7 @@ struct ContentView: View {
                     addSubtask(to: task)
                 }
                 if datedNewSubtaskTaskIDs.contains(task.id) {
-                    DatePicker("", selection: newSubtaskDateBinding(for: task.id), displayedComponents: .date)
+                    DatePicker("", selection: newSubtaskDateBinding(for: task.id), displayedComponents: [.date, .hourAndMinute])
                         .labelsHidden()
                         .fixedSize()
                 }
@@ -1171,7 +1092,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(datedNewSubtaskTaskIDs.contains(task.id) ? accent : Color.secondary)
-                .help(datedNewSubtaskTaskIDs.contains(task.id) ? "إضافة الخطوة بلا يوم" : "تحديد يوم للخطوة (اختياري)")
+                .help(datedNewSubtaskTaskIDs.contains(task.id) ? "إضافة الخطوة بلا موعد تسليم" : "تحديد موعد تسليم للخطوة (اختياري)")
                 Button {
                     addSubtask(to: task)
                 } label: {
@@ -1274,7 +1195,7 @@ struct ContentView: View {
 
     private func newSubtaskDateBinding(for taskID: UUID) -> Binding<Date> {
         Binding(
-            get: { newSubtaskDates[taskID] ?? Date() },
+            get: { newSubtaskDates[taskID] ?? Self.nextWholeHour() },
             set: { newSubtaskDates[taskID] = $0 }
         )
     }
@@ -1282,9 +1203,21 @@ struct ContentView: View {
     private func addSubtask(to task: PlannerTask) {
         let title = newSubtaskTitles[task.id] ?? ""
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        let scheduledDate = datedNewSubtaskTaskIDs.contains(task.id) ? (newSubtaskDates[task.id] ?? Date()) : nil
-        store.addSubtask(to: task.id, title: title, scheduledDate: scheduledDate)
+        let due = datedNewSubtaskTaskIDs.contains(task.id) ? (newSubtaskDates[task.id] ?? Self.nextWholeHour()) : nil
+        store.addSubtask(to: task.id, title: title, scheduledDate: due, dueMinutes: due.map(Self.minutesSinceMidnight))
         newSubtaskTitles[task.id] = ""
+    }
+
+    /// الساعة الكاملة التالية، قيمة أولية معقولة لموعد تسليم جديد.
+    nonisolated static func nextWholeHour(after date: Date = .now) -> Date {
+        let calendar = PlannerCalendar.current
+        let hourStart = calendar.dateInterval(of: .hour, for: date)?.start ?? date
+        return calendar.date(byAdding: .hour, value: 1, to: hourStart) ?? date
+    }
+
+    nonisolated static func minutesSinceMidnight(_ date: Date) -> Int {
+        let parts = PlannerCalendar.current.dateComponents([.hour, .minute], from: date)
+        return (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
     }
 
     private var wisdomCard: some View {
@@ -1402,6 +1335,7 @@ private struct SubtaskEditorSheet: View {
     @State private var title: String
     @State private var note: String
     @State private var hasDate: Bool
+    @State private var hasTime: Bool
     @State private var date: Date
     @State private var minutes: Int
 
@@ -1415,7 +1349,14 @@ private struct SubtaskEditorSheet: View {
         _note = State(initialValue: subtask.note)
         let scheduledDate = subtask.scheduledDate.flatMap(PlannerStorage.date(fromKey:))
         _hasDate = State(initialValue: scheduledDate != nil)
-        _date = State(initialValue: scheduledDate ?? Date())
+        _hasTime = State(initialValue: scheduledDate != nil && subtask.dueMinutes != nil)
+        let initialDate: Date
+        if let scheduledDate {
+            initialDate = PlannerCalendar.current.date(byAdding: .minute, value: subtask.dueMinutes ?? 9 * 60, to: scheduledDate) ?? scheduledDate
+        } else {
+            initialDate = ContentView.nextWholeHour()
+        }
+        _date = State(initialValue: initialDate)
         _minutes = State(initialValue: subtask.estimatedMinutes ?? 30)
     }
 
@@ -1430,9 +1371,13 @@ private struct SubtaskEditorSheet: View {
             }
             RTLTextField(placeholder: "اسم الخطوة", text: $title)
             RTLTextField(placeholder: "ملاحظة", text: $note)
-            Toggle("مجدولة في يوم محدد", isOn: $hasDate)
+            Toggle("موعد تسليم للخطوة", isOn: $hasDate)
             if hasDate {
-                DatePicker("اليوم", selection: $date, displayedComponents: .date)
+                DatePicker("يوم التسليم", selection: $date, displayedComponents: .date)
+                Toggle("وقت تسليم محدد", isOn: $hasTime)
+                if hasTime {
+                    DatePicker("الساعة", selection: $date, displayedComponents: .hourAndMinute)
+                }
             }
             Stepper("المدة التقديرية: \(minutes) دقيقة", value: $minutes, in: 5...300, step: 5)
 
@@ -1456,11 +1401,233 @@ private struct SubtaskEditorSheet: View {
         updated.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.scheduledDate = hasDate ? PlannerStorage.dateKey(for: date) : nil
+        updated.dueMinutes = hasDate && hasTime ? ContentView.minutesSinceMidnight(date) : nil
         // لا نخترع تقديرًا لخطوة بلا مدة إن لم تُغيَّر القيمة الافتراضية.
         if target.subtask.estimatedMinutes != nil || minutes != 30 {
             updated.estimatedMinutes = minutes
         }
         store.updateSubtask(updated, in: target.taskID)
+        dismiss()
+    }
+}
+
+/// ما يُعدَّل في نافذة التنبيهات: مهمة رئيسية أو خطوة داخلها.
+struct ReminderEditTarget: Identifiable {
+    let taskID: UUID
+    let stepID: UUID?
+    let title: String
+    let reminders: [TaskReminder]
+    /// موعد التسليم الذي تُحسب منه التنبيهات النسبية (nil إن لم يُحدد للخطوة موعد).
+    let dueDescription: String?
+
+    var id: UUID { stepID ?? taskID }
+
+    init(task: PlannerTask) {
+        taskID = task.id
+        stepID = nil
+        title = task.title
+        reminders = task.reminders
+        dueDescription = "الموعد النهائي: \(PlannerCalendar.text(for: task.deadline, format: "EEEE d MMMM"))"
+    }
+
+    init(step: PlannerSubtask, taskID: UUID) {
+        self.taskID = taskID
+        stepID = step.id
+        title = step.title
+        reminders = step.reminders
+        if let key = step.scheduledDate, let day = PlannerStorage.date(fromKey: key) {
+            var text = PlannerCalendar.text(for: day, format: "EEEE d MMMM")
+            if let minutes = step.dueMinutes,
+               let time = PlannerCalendar.current.date(byAdding: .minute, value: minutes, to: day) {
+                text += "، \(PlannerCalendar.text(for: time, format: "h:mm a"))"
+            }
+            dueDescription = "موعد التسليم: \(text)"
+        } else {
+            dueDescription = nil
+        }
+    }
+}
+
+private enum ReminderKind: String, CaseIterable, Identifiable {
+    case relative = "قبل الموعد"
+    case exact = "في وقت محدد"
+
+    var id: String { rawValue }
+}
+
+private enum ReminderUnit: String, CaseIterable, Identifiable {
+    case minutes = "دقيقة"
+    case hours = "ساعة"
+    case days = "يوم"
+
+    var id: String { rawValue }
+
+    var minutes: Int {
+        switch self {
+        case .minutes: return 1
+        case .hours: return 60
+        case .days: return 1440
+        }
+    }
+}
+
+/// تنبيهات مهمة أو خطوة: عرضها وحذفها وإضافة تنبيه قبل الموعد أو في وقت محدد.
+private struct ReminderEditorSheet: View {
+    @EnvironmentObject private var store: PlannerStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var reminders: [TaskReminder]
+    @State private var kind: ReminderKind
+    @State private var amount = 1
+    @State private var unit = ReminderUnit.days
+    @State private var exactDate = ContentView.nextWholeHour()
+
+    private let target: ReminderEditTarget
+    private var accent: Color { store.theme.accent }
+    private var canUseRelative: Bool { target.dueDescription != nil }
+
+    init(target: ReminderEditTarget) {
+        self.target = target
+        _reminders = State(initialValue: target.reminders)
+        _kind = State(initialValue: target.dueDescription == nil ? .exact : .relative)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(target.stepID == nil ? "تنبيهات المهمة" : "تنبيهات الخطوة")
+                .font(.title2.weight(.semibold))
+            Label(target.title, systemImage: target.stepID == nil ? "flag" : "list.bullet.indent")
+                .font(.subheadline)
+                .foregroundStyle(accent)
+            if let due = target.dueDescription {
+                Text(due)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("لم يُحدد لهذه الخطوة موعد تسليم، فيمكن التنبيه في وقت محدد فقط. ولتنبيه «قبل الموعد» حدّد موعدها من «تعديل الخطوة».")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if reminders.isEmpty {
+                Text("لا تنبيهات بعد.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(reminders) { reminder in
+                        HStack(spacing: 8) {
+                            Image(systemName: "bell.fill")
+                                .font(.caption)
+                                .foregroundStyle(accent)
+                            Text(reminder.label)
+                                .font(.callout)
+                            Spacer(minLength: 0)
+                            Button {
+                                reminders.removeAll { $0.id == reminder.id }
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.red.opacity(0.8))
+                            .help("حذف التنبيه")
+                        }
+                    }
+                }
+                .padding(10)
+                .background(store.theme.soft.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("إضافة تنبيه")
+                    .font(.headline)
+                Picker("", selection: $kind) {
+                    ForEach(ReminderKind.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .disabled(!canUseRelative)
+
+                if kind == .relative {
+                    HStack(spacing: 8) {
+                        Stepper("قبل الموعد بـ \(amount)", value: $amount, in: 0...90)
+                        Picker("", selection: $unit) {
+                            ForEach(ReminderUnit.allCases) { Text($0.rawValue).tag($0) }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                } else {
+                    DatePicker("الوقت", selection: $exactDate, displayedComponents: [.date, .hourAndMinute])
+                }
+
+                Button {
+                    addReminder()
+                } label: {
+                    Label("إضافة التنبيه", systemImage: "plus.circle.fill")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(accent)
+            }
+
+            if !store.settings.notificationsEnabled || !store.settings.deadlineRemindersEnabled {
+                Label("تنبيهات التذكير مطفأة من الإعدادات، فلن تصل حتى تُفعَّل.", systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
+            HStack {
+                Button("إلغاء") { dismiss() }
+                Spacer()
+                Button("حفظ") { save() }
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(24)
+        .frame(width: 440)
+        .tint(accent)
+        .environment(\.calendar, PlannerCalendar.current)
+        .environment(\.locale, PlannerCalendar.locale)
+    }
+
+    private func addReminder() {
+        let reminder: TaskReminder
+        if kind == .relative && canUseRelative {
+            let minutes = amount * unit.minutes
+            reminder = TaskReminder(
+                label: TaskReminder.relativeLabel(minutes: minutes),
+                minutesBeforeDeadline: minutes,
+                dateTime: nil,
+                fromNotes: false
+            )
+        } else {
+            let formatter = DateFormatter()
+            formatter.calendar = PlannerCalendar.current
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = .current
+            formatter.dateFormat = "yyyy-MM-dd HH:mm"
+            reminder = TaskReminder(
+                label: PlannerCalendar.text(for: exactDate, format: "EEEE d MMMM، h:mm a"),
+                minutesBeforeDeadline: nil,
+                dateTime: formatter.string(from: exactDate),
+                fromNotes: false
+            )
+        }
+        // لا نكرر تنبيهًا مطابقًا.
+        guard !reminders.contains(where: {
+            $0.minutesBeforeDeadline == reminder.minutesBeforeDeadline && $0.dateTime == reminder.dateTime
+        }) else { return }
+        reminders.append(reminder)
+    }
+
+    private func save() {
+        if let stepID = target.stepID {
+            store.setReminders(reminders, forStep: stepID, in: target.taskID)
+        } else {
+            store.setReminders(reminders, for: target.taskID)
+        }
         dismiss()
     }
 }

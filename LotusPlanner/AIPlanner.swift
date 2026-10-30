@@ -292,6 +292,8 @@ struct AIStep: Decodable {
     let note: String
     let scheduledDate: String?
     let estimatedMinutes: Int?
+    let dueTime: String?
+    let reminders: [AIReminder]
 }
 
 struct AIPlanning: Decodable {
@@ -354,13 +356,15 @@ private func planningPrompt(tasks: [PlannerTask], mode: PlannerAIMode, date: Dat
         ٢) scheduledDate لكل خطوة: null دائمًا، إلا إن حددت notes صراحةً يومًا أو تاريخًا لتلك الخطوة بعينها، فحوّله إلى yyyy-MM-dd. لا توزّع الخطوات على الأيام ولا تقترح أيامًا.
         ٣) estimatedMinutes: ضع المدة فقط إن ذكرتها notes صراحةً لتلك الخطوة، وإلا null.
         note لكل خطوة: اتركه نصًا فارغًا "" إلا إن ذكرت notes تفاصيل لتلك الخطوة بعينها؛ لا تكتب شرحًا من عندك.
+        dueTime لكل خطوة: وقت تسليمها بصيغة HH:mm (24 ساعة) فقط إن ذكرت notes وقتًا لتلك الخطوة، وإلا null.
+        reminders لكل خطوة: التذكيرات المطلوبة صراحةً لتلك الخطوة بعينها فقط (بالصيغة نفسها أدناه، محسوبة من موعد تسليم الخطوة)، وإلا مصفوفة فارغة.
         ٤) planning: استخرج فقط ما طُلب صراحةً: effortMinutes للجهد الكلي بالدقائق (مثلًا «ساعتان إلى ثلاث» = 150)، minSessionMinutes لأقل مدة جلسة عمل، spreadOverDays لعدد الأيام المطلوب التوزيع عليها («عدة أيام» = 3)، earliestStart لأول يوم بدء بصيغة yyyy-MM-dd، priority إحدى high أو normal أو low إن ذُكرت الأهمية، recurrence إحدى weekly أو monthly إن طُلب التكرار. ما لم يُذكر اجعله null.
-        ٥) reminders: التذكيرات المطلوبة صراحةً فقط، وهي للمهمة الرئيسية ومحسوبة من موعدها النهائي. label وصف عربي قصير مثل «قبل الموعد بيومين». minutesBeforeDeadline للتذكير النسبي (يوم = 1440، يومان = 2880)، أو dateTime بصيغة yyyy-MM-dd HH:mm لوقت محدد، والآخر null. إن لم يُطلب تذكير فاجعلها فارغة.
+        ٥) reminders: التذكيرات المطلوبة صراحةً فقط، وهي للمهمة الرئيسية ومحسوبة من موعدها النهائي. label وصف عربي قصير مثل «قبل الموعد بيومين». minutesBeforeDeadline للتذكير النسبي (يوم = 1440، يومان = 2880)، أو dateTime بصيغة yyyy-MM-dd HH:mm لوقت محدد، والآخر null. إن لم يُطلب تذكير فاجعلها فارغة. والتذكير الخاص بخطوة بعينها يوضع في reminders تلك الخطوة لا هنا.
         ٦) suggestions: مصفوفة فارغة دائمًا في هذا الطلب.
         """
     case .suggestSteps:
         modeInstructions = """
-        المطلوب اقتراحات فقط: في suggestions اقترح من خطوتين إلى خمس خطوات عملية مفيدة لإنجاز كل مهمة، لا تكرر existingSteps، واجعل scheduledDate وestimatedMinutes لكل خطوة null. هذه اقتراحات تُعرض للموافقة ولن تُضاف تلقائيًا.
+        المطلوب اقتراحات فقط: في suggestions اقترح من خطوتين إلى خمس خطوات عملية مفيدة لإنجاز كل مهمة، لا تكرر existingSteps، واجعل scheduledDate وestimatedMinutes وdueTime لكل خطوة null وreminders مصفوفة فارغة. هذه اقتراحات تُعرض للموافقة ولن تُضاف تلقائيًا.
         اجعل subtasks وreminders مصفوفات فارغة، وكل حقول planning قيمتها null.
         """
     }
@@ -382,15 +386,27 @@ private func planningPrompt(tasks: [PlannerTask], mode: PlannerAIMode, date: Dat
 private func makePlanSchema() -> [String: Any] {
     let nullableString: [String: Any] = ["type": ["string", "null"]]
     let nullableMinutes: [String: Any] = ["type": ["integer", "null"], "minimum": 1, "maximum": 6000]
+    let reminderItem: [String: Any] = [
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "minutesBeforeDeadline", "dateTime"],
+        "properties": [
+            "label": ["type": "string"],
+            "minutesBeforeDeadline": ["type": ["integer", "null"], "minimum": 0, "maximum": 525600],
+            "dateTime": nullableString
+        ]
+    ]
     let step: [String: Any] = [
         "type": "object",
         "additionalProperties": false,
-        "required": ["title", "note", "scheduledDate", "estimatedMinutes"],
+        "required": ["title", "note", "scheduledDate", "estimatedMinutes", "dueTime", "reminders"],
         "properties": [
             "title": ["type": "string"],
             "note": ["type": "string"],
             "scheduledDate": nullableString,
-            "estimatedMinutes": nullableMinutes
+            "estimatedMinutes": nullableMinutes,
+            "dueTime": nullableString,
+            "reminders": ["type": "array", "items": reminderItem]
         ]
     ]
     return [
@@ -427,19 +443,7 @@ private func makePlanSchema() -> [String: Any] {
                                 "recurrence": nullableString
                             ]
                         ],
-                        "reminders": [
-                            "type": "array",
-                            "items": [
-                                "type": "object",
-                                "additionalProperties": false,
-                                "required": ["label", "minutesBeforeDeadline", "dateTime"],
-                                "properties": [
-                                    "label": ["type": "string"],
-                                    "minutesBeforeDeadline": ["type": ["integer", "null"], "minimum": 0, "maximum": 525600],
-                                    "dateTime": nullableString
-                                ]
-                            ]
-                        ]
+                        "reminders": ["type": "array", "items": reminderItem]
                     ]
                 ]
             ]

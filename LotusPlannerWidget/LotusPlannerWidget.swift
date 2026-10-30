@@ -274,12 +274,12 @@ struct LotusWidgetView: View {
         }
     }
 
-    /// سطر مهمة واحد مضغوط: الأيقونة والعنوان، ثم موعدها.
+    /// سطر مهمة واحد مضغوط: نقطة والعنوان، ثم موعدها.
     private func mainTaskLine(_ task: PlannerTask) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: task.category == .work ? "house.fill" : "briefcase.fill")
-                .font(.caption2)
-                .foregroundStyle(accent)
+            Circle()
+                .fill(accent)
+                .frame(width: 5, height: 5)
             Text(task.title)
                 .font(.caption.weight(.medium))
                 .lineLimit(1)

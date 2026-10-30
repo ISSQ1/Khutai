@@ -20,16 +20,19 @@ Two color themes, switchable from the button at the top of the window. Your choi
 
 ## What it does
 
-**Your description is the instruction.** A task without a description is added exactly as written. If you list steps, only those steps are added, with no invented dates. Reminder and planning requests ("remind me a day before", "needs about three hours over two days") are applied to the task. Extra steps are suggested only when you ask, and added only after you approve them.
+**Your description is the instruction.** A task without a description is added exactly as written. If you list steps, only those steps are added, with no invented dates. Reminder and planning requests ("remind me a day before", "remind me an hour before step two", "needs about three hours over two days") are applied to the task or to the step they mention. Extra steps are suggested only when you ask, and added only after you approve them.
 
 **Priority for every task.** High, medium or low, set when you create the task and shown on its card.
+
+**Due dates for steps too.** Each step inside a task can have its own delivery day and time.
 
 **Knows when you should start.** From the deadline, the effort you mention, priority, your daily capacity and your calendar, Khutai suggests a start day for each task and warns you early when time is getting short. It never moves your tasks on its own.
 
 **Calendar, Reminders and notifications.**
-- Your macOS Calendar appointments appear in today's plan and the monthly calendar; appointments you add from Khutai are saved to a «خُطاي» calendar.
+- Your macOS Calendar appointments appear in the monthly calendar and the selected day's details; appointments you add from Khutai are saved to a «خُطاي» calendar.
 - Main tasks can sync with a «خُطاي» list in the Reminders app, so they reach your iPhone. Completion syncs both ways, and the reminders you ask for become alerts there.
-- Notifications for a morning summary, upcoming appointments, start days and deadline reminders. Tapping the morning summary opens a short morning review.
+- Notifications with sound for a morning summary, upcoming appointments, start days and reminders. Tapping the morning summary opens a short morning review.
+- A bell button beside every task and every step lets you add, review or remove its reminders: "before the due time" (minutes, hours or days) or at an exact date and time. A test button in Settings shows how a notification arrives.
 
 **Two separate tracks.** "Work" and "Personal", and a task can move between them at any time.
 

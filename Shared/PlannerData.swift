@@ -290,6 +290,10 @@ struct PlannerSettings: Codable, Equatable {
     var remindersSyncEnabled = false
     /// تذكيرات لا تُستورد كمهام (مثل تذكيرات المهام الممسوحة عند «البدء من جديد»).
     var ignoredReminderIDs: [String] = []
+    /// إرسال تنبيهات المهام الرئيسية إلى «التذكيرات» أيضًا لتصل إلى الآيفون.
+    var remindersOnIPhone = true
+    /// تشغيل صوت مع تنبيهات خُطاي.
+    var notificationSound = true
 
     init() {}
 
@@ -323,6 +327,8 @@ struct PlannerSettings: Codable, Equatable {
         selectedCalendarIDs = (try? container.decodeIfPresent([String].self, forKey: .selectedCalendarIDs)) ?? defaults.selectedCalendarIDs
         remindersSyncEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .remindersSyncEnabled)) ?? defaults.remindersSyncEnabled
         ignoredReminderIDs = (try? container.decodeIfPresent([String].self, forKey: .ignoredReminderIDs)) ?? defaults.ignoredReminderIDs
+        remindersOnIPhone = (try? container.decodeIfPresent(Bool.self, forKey: .remindersOnIPhone)) ?? defaults.remindersOnIPhone
+        notificationSound = (try? container.decodeIfPresent(Bool.self, forKey: .notificationSound)) ?? defaults.notificationSound
     }
 }
 
@@ -377,6 +383,44 @@ struct TaskReminder: Codable, Hashable, Identifiable {
     var minutesBeforeDeadline: Int?
     /// وقت محدد بصيغة yyyy-MM-dd HH:mm (إن كان التذكير بتاريخ معيّن).
     var dateTime: String?
+    /// مستخرج من التفاصيل (يُستبدل عند تعديلها)، أو أضافته المستخدمة بنفسها (يبقى).
+    var fromNotes: Bool = true
+
+    /// وصف عربي لتذكير نسبي، مثل «قبل الموعد بيوم» أو «قبل الموعد بساعتين».
+    static func relativeLabel(minutes: Int) -> String {
+        if minutes == 0 { return "عند الموعد" }
+        if minutes % 1440 == 0 {
+            let days = minutes / 1440
+            switch days {
+            case 1: return "قبل الموعد بيوم"
+            case 2: return "قبل الموعد بيومين"
+            case 3...10: return "قبل الموعد بـ\(days) أيام"
+            default: return "قبل الموعد بـ\(days) يومًا"
+            }
+        }
+        if minutes % 60 == 0 {
+            let hours = minutes / 60
+            switch hours {
+            case 1: return "قبل الموعد بساعة"
+            case 2: return "قبل الموعد بساعتين"
+            case 3...10: return "قبل الموعد بـ\(hours) ساعات"
+            default: return "قبل الموعد بـ\(hours) ساعة"
+            }
+        }
+        return "قبل الموعد بـ\(minutes) دقيقة"
+    }
+}
+
+extension TaskReminder {
+    /// فك ترميز متوافق: التذكيرات القديمة كلها جاءت من التفاصيل.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        label = try container.decodeIfPresent(String.self, forKey: .label) ?? ""
+        minutesBeforeDeadline = try container.decodeIfPresent(Int.self, forKey: .minutesBeforeDeadline)
+        dateTime = try container.decodeIfPresent(String.self, forKey: .dateTime)
+        fromNotes = try container.decodeIfPresent(Bool.self, forKey: .fromNotes) ?? true
+    }
 }
 
 /// خطوة فرعية تابعة لمهمة رئيسية واحدة.
@@ -392,6 +436,10 @@ struct PlannerSubtask: Codable, Identifiable, Hashable {
     /// هل استُخرجت الخطوة من التفاصيل؟ عند تعديل التفاصيل تُستبدل هذه الخطوات
     /// (غير المنجزة) فقط، وتبقى الخطوات اليدوية والمقبولة من الاقتراحات كما هي.
     var fromNotes: Bool
+    /// وقت التسليم داخل يوم الخطوة (دقائق من منتصف الليل)، إن حُدد.
+    var dueMinutes: Int?
+    /// تنبيهات هذه الخطوة (قبل موعد تسليمها أو في وقت محدد).
+    var reminders: [TaskReminder]
 
     init(
         id: UUID = UUID(),
@@ -401,7 +449,9 @@ struct PlannerSubtask: Codable, Identifiable, Hashable {
         scheduledDate: String? = nil,
         isDone: Bool = false,
         completedAt: Date? = nil,
-        fromNotes: Bool = false
+        fromNotes: Bool = false,
+        dueMinutes: Int? = nil,
+        reminders: [TaskReminder] = []
     ) {
         self.id = id
         self.title = title
@@ -411,6 +461,14 @@ struct PlannerSubtask: Codable, Identifiable, Hashable {
         self.isDone = isDone
         self.completedAt = completedAt
         self.fromNotes = fromNotes
+        self.dueMinutes = dueMinutes
+        self.reminders = reminders
+    }
+
+    /// موعد تسليم الخطوة: يومها مع وقتها (أو الوقت الافتراضي إن لم يُحدد وقت).
+    func dueDate(defaultMinutes: Int) -> Date? {
+        guard let key = scheduledDate, let day = PlannerStorage.date(fromKey: key) else { return nil }
+        return PlannerCalendar.current.date(byAdding: .minute, value: dueMinutes ?? defaultMinutes, to: day)
     }
 }
 
@@ -426,6 +484,8 @@ extension PlannerSubtask {
         isDone = try container.decodeIfPresent(Bool.self, forKey: .isDone) ?? false
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
         fromNotes = try container.decodeIfPresent(Bool.self, forKey: .fromNotes) ?? false
+        dueMinutes = try container.decodeIfPresent(Int.self, forKey: .dueMinutes)
+        reminders = try container.decodeIfPresent([TaskReminder].self, forKey: .reminders) ?? []
     }
 }
 
